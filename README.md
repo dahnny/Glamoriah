@@ -9,3 +9,4 @@ Owners of products in the marketplace can edit units available, description of p
 GLAM UP
 
 #### _link_to_project_
+https://gloriafrank.github.io/Glamoriah/
