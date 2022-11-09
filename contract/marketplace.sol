@@ -69,8 +69,7 @@ interface IERC20Token {
 contract Marketplace {
     address internal cUsdTokenAddress =
         0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1;
-    address internal glamoriahAddress =
-        0x038eaa59Ecf6EcE3F7BcDa08eaF18B36A1786752;
+    address internal glamoriahAddress = msg.sender;
     uint256 private wig_index = 0;
 
     struct Wig {
@@ -111,8 +110,8 @@ contract Marketplace {
     }
 
     /**
-        * @dev allow users to add a wig to the marketplace
-        * @notice Input data needs to contain only valid/non-empty values
+     * @dev allow users to add a wig to the marketplace
+     * @notice Input data needs to contain only valid/non-empty values
      */
     function set_wig(
         string calldata _name,
@@ -136,7 +135,7 @@ contract Marketplace {
         newWig.url = _url;
         newWig.description = _description;
         newWig.price = _price;
-        newWig.temp_price = _price;
+        newWig.temp_price = 0;
         newWig.units_available = _total_uints;
 
         if (!sellers[msg.sender].initialised) {
@@ -156,8 +155,8 @@ contract Marketplace {
     }
 
     /**
-        * @dev allow users to rate a wig
-        * @notice Rate has to be between 1 and 5
+     * @dev allow users to rate a wig
+     * @notice Rate has to be between 1 and 5
      */
     function rate_wig(uint256 _wig_index, uint256 _rate) public {
         require(_rate > 0 && _rate <= 5, "Rate needs to be between 1 and 5");
@@ -165,16 +164,19 @@ contract Marketplace {
             wigs[_wig_index].owner != msg.sender,
             "Owners cannot rate their own products"
         );
-        require(!ratedWig[msg.sender][_wig_index], "You have already rated this wig");
+        require(
+            !ratedWig[msg.sender][_wig_index],
+            "You have already rated this wig"
+        );
         ratedWig[msg.sender][_wig_index] = true;
         wigs[_wig_index].rating_points += _rate;
         wigs[_wig_index].rated_by++;
     }
 
     /**
-        * @dev allow users to buy a wig from the marketplace
-        * @param _units the number of wigs to buy
-        * @notice stock available for wig needs to be able to fulfill the units specified for this order
+     * @dev allow users to buy a wig from the marketplace
+     * @param _units the number of wigs to buy
+     * @notice stock available for wig needs to be able to fulfill the units specified for this order
      */
     function buy_wig(uint256 _wig_index, uint256 _units)
         public
@@ -183,7 +185,10 @@ contract Marketplace {
     {
         Wig storage current_wig = wigs[_wig_index];
         require(_units > 0, "Units cannot be empty");
-        require(current_wig.units_available >= _units,"Not enough wigs in stock to fulfill this order");
+        require(
+            current_wig.units_available >= _units,
+            "Not enough wigs in stock to fulfill this order"
+        );
         require(
             current_wig.owner != msg.sender,
             "Owners cannot buy their own products"
@@ -196,7 +201,7 @@ contract Marketplace {
             ),
             "Transfer failed."
         );
-        uint new_units_sold = current_wig.units_sold + _units; 
+        uint new_units_sold = current_wig.units_sold + _units;
         current_wig.units_sold = new_units_sold;
         uint new_units_available = current_wig.units_available - _units;
         current_wig.units_available = new_units_available;
@@ -207,7 +212,10 @@ contract Marketplace {
         is_in_marketplace(_wig_index)
         is_owner(_wig_index)
     {
+        require(_price > 0, "Price cannot be empty");
+        wigs[_wig_index].temp_price = wigs[_wig_index].price;
         wigs[_wig_index].price = _price;
+       
     }
 
     function end_discount(uint256 _wig_index)
@@ -215,6 +223,7 @@ contract Marketplace {
         is_in_marketplace(_wig_index)
         is_owner(_wig_index)
     {
+        require(wigs[_wig_index].temp_price > 0, "cannot be empty");
         wigs[_wig_index].price = wigs[_wig_index].temp_price;
     }
 
@@ -236,36 +245,43 @@ contract Marketplace {
         wigs[_wig_index].description = _description;
     }
 
+    function delete_wig(uint256 _wig_index) public is_owner(_wig_index){
+        delete wigs[_wig_index];
+    }
 
     /**
-        * @dev allow users to rate a seller
-        * @notice rate specified needs to be between 1 and 5
+     * @dev allow users to rate a seller
+     * @notice rate specified needs to be between 1 and 5
      */
-    function rate_seller(address seller, uint256 rate) public {
-        
-        require(rate > 0 && rate <= 5, "Rate needs to be between 1 and 5");
-        Seller storage current_seller = sellers[seller];
-        require(current_seller.initialised, "Seller has not been intialised yet");
-        require(
-            current_seller.account != msg.sender,
-            "You can't rate yourself"
-        );
-        require(
-            !ratedSeller[msg.sender][seller], "You have already rated this seller"
-        );
-        ratedSeller[msg.sender][seller] = true;
-        current_seller.rating_points += rate;
-        current_seller.rated_by++;
-    }
+    // function rate_seller(address seller, uint256 rate) public {
+    //     require(rate > 0 && rate <= 5, "Rate needs to be between 1 and 5");
+    //     Seller storage current_seller = sellers[seller];
+    //     require(
+    //         current_seller.initialised,
+    //         "Seller has not been intialised yet"
+    //     );
+    //     require(
+    //         current_seller.account != msg.sender,
+    //         "You can't rate yourself"
+    //     );
+    //     require(
+    //         !ratedSeller[msg.sender][seller],
+    //         "You have already rated this seller"
+    //     );
+    //     ratedSeller[msg.sender][seller] = true;
+    //     current_seller.rating_points += rate;
+    //     current_seller.rated_by++;
+    // }
 
     function get_num_of_wigs() public view returns (uint256) {
         return (wig_index);
     }
 
     /**
-        * @dev allow users to support the platform's owner
+     * @dev allow users to support the platform's owner
      */
     function tip_us(uint256 _amount) public payable {
+        require(_amount > 0, "amount has to be greater than zero");
         require(
             IERC20Token(cUsdTokenAddress).transferFrom(
                 msg.sender,
